@@ -280,6 +280,50 @@ class OpenAIService:
                 <h3>{language} Implementation</h3>
                 <p>Learn how to implement linked lists using classes/structs and pointers/references.</p>
                 """
+            },
+            "Stacks & Queues": {
+                "title": f"Stacks & Queues in {language}",
+                "overview": f"Master stack and queue data structures with practical implementations in {language}.",
+                "theory_content": f"""
+                <h2>Stacks & Queues in {language}</h2>
+                <p>Stacks (LIFO) and queues (FIFO) are fundamental linear data structures with diverse applications.</p>
+
+                <h3>Stack Operations</h3>
+                <ul>
+                    <li>Push, pop, peek operations</li>
+                    <li>Implementation using arrays/linked lists</li>
+                    <li>Applications: function calls, undo/redo</li>
+                </ul>
+
+                <h3>Queue Operations</h3>
+                <ul>
+                    <li>Enqueue, dequeue operations</li>
+                    <li>Circular queues and priority queues</li>
+                    <li>Applications: task scheduling, BFS</li>
+                </ul>
+                """
+            },
+            "Trees & BST": {
+                "title": f"Trees & Binary Search Trees in {language}",
+                "overview": f"Learn tree data structures and binary search trees with efficient implementations in {language}.",
+                "theory_content": f"""
+                <h2>Trees & BST in {language}</h2>
+                <p>Trees are hierarchical data structures essential for representing nested relationships.</p>
+
+                <h3>Tree Concepts</h3>
+                <ul>
+                    <li>Root, nodes, leaves, depth, height</li>
+                    <li>Binary trees and n-ary trees</li>
+                    <li>Tree traversal algorithms</li>
+                </ul>
+
+                <h3>Binary Search Trees</h3>
+                <ul>
+                    <li>BST properties and operations</li>
+                    <li>Search, insertion, deletion</li>
+                    <li>Balanced trees (AVL, Red-Black)</li>
+                </ul>
+                """
             }
         }
 
@@ -287,7 +331,7 @@ class OpenAIService:
         template = concept_templates.get(chapter_name, {
             "title": f"{chapter_name} in {language}",
             "overview": f"Comprehensive guide to {chapter_name} concepts and implementations in {language}.",
-            "theory_content": f"<h2>{chapter_name} Concepts</h2><p>Detailed theory and practical implementations.</p>"
+            "theory_content": f"<h2>{chapter_name} Concepts</h2><p>Detailed theory and practical implementations of {chapter_name.lower()} in {language}.</p>"
         })
 
         return {
@@ -324,39 +368,47 @@ class OpenAIService:
             # Level 1-2: Basic operations
             {
                 "title": f"Basic {chapter_name} Operation",
-                "description": f"Implement a basic operation for {chapter_name} in {language}.",
-                "examples": [{"input": "simple input", "output": "expected output", "explanation": "Basic example"}],
-                "hints": ["Start with simple approach", "Consider edge cases", "Test with examples"]
+                "description": f"Implement a basic operation for {chapter_name} in {language}. Focus on fundamental syntax and simple operations.",
+                "examples": [{"input": "simple input", "output": "expected output",
+                              "explanation": "Basic example demonstrating the operation"}],
+                "hints": ["Start with the simplest approach", "Consider basic edge cases",
+                          "Test with the provided examples"]
             },
             # Level 3-4: Simple algorithms
             {
                 "title": f"Element Finding in {chapter_name}",
-                "description": f"Find specific elements in {chapter_name} based on given conditions.",
-                "examples": [{"input": "search criteria", "output": "found elements", "explanation": "Search example"}],
-                "hints": ["Think about traversal", "Consider efficiency", "Handle edge cases"]
+                "description": f"Find specific elements in {chapter_name} based on given conditions. This requires basic algorithmic thinking.",
+                "examples": [{"input": "search criteria", "output": "found elements",
+                              "explanation": "Example of searching within the data structure"}],
+                "hints": ["Think about traversal methods", "Consider efficiency of your approach",
+                          "Handle empty or edge cases"]
             },
             # Level 5-6: Moderate complexity
             {
                 "title": f"{chapter_name} Transformation",
-                "description": f"Transform the {chapter_name} according to specific rules.",
+                "description": f"Transform the {chapter_name} according to specific rules. This involves multiple steps and conditions.",
                 "examples": [{"input": "original structure", "output": "transformed structure",
-                              "explanation": "Transformation example"}],
-                "hints": ["Plan your approach", "Consider multiple passes", "Optimize where possible"]
+                              "explanation": "Example of data transformation"}],
+                "hints": ["Plan your approach step by step", "Consider if multiple passes are needed",
+                          "Look for optimization opportunities"]
             },
             # Level 7-8: Advanced operations
             {
                 "title": f"Advanced {chapter_name} Algorithm",
-                "description": f"Implement an advanced algorithm for {chapter_name} manipulation.",
-                "examples": [
-                    {"input": "complex input", "output": "algorithm result", "explanation": "Advanced example"}],
-                "hints": ["Use optimal data structures", "Consider time complexity", "Test thoroughly"]
+                "description": f"Implement an advanced algorithm for {chapter_name} manipulation. Focus on efficiency and edge cases.",
+                "examples": [{"input": "complex input data", "output": "algorithm result",
+                              "explanation": "Complex example requiring advanced processing"}],
+                "hints": ["Use appropriate data structures", "Consider time and space complexity",
+                          "Test with various edge cases"]
             },
             # Level 9-10: Complex problems
             {
                 "title": f"Complex {chapter_name} Challenge",
-                "description": f"Solve a complex real-world problem using {chapter_name}.",
-                "examples": [{"input": "real-world scenario", "output": "solution", "explanation": "Complex example"}],
-                "hints": ["Break into subproblems", "Consider multiple approaches", "Optimize for performance"]
+                "description": f"Solve a complex real-world problem using {chapter_name}. This requires optimal solutions and thorough testing.",
+                "examples": [{"input": "real-world scenario input", "output": "optimal solution",
+                              "explanation": "Real-world application example"}],
+                "hints": ["Break the problem into subproblems", "Consider multiple solution approaches",
+                          "Optimize for worst-case scenarios"]
             }
         ]
 
@@ -377,7 +429,7 @@ class OpenAIService:
                 {"input": f"test_case_3_level_{level}", "expected_output": f"result_3_level_{level}"}
             ],
             "solution": self._get_realistic_solution(language, chapter_name, level),
-            "solution_explanation": f"This solution demonstrates level {level} complexity for {chapter_name} problems.",
+            "solution_explanation": f"This solution demonstrates level {level} complexity for {chapter_name} problems with appropriate algorithmic thinking.",
             "time_complexity": self._get_realistic_complexity(level, "time"),
             "space_complexity": self._get_realistic_complexity(level, "space")
         }
@@ -387,7 +439,9 @@ class OpenAIService:
         examples = {
             "python": {
                 "Arrays & Strings": "# Array example\narr = [1, 2, 3, 4, 5]\nprint(\"Array:\", arr)\n\n# String example\ns = \"hello\"\nprint(\"String:\", s)\nprint(\"Reversed:\", s[::-1])",
-                "Linked Lists": "class Node:\n    def __init__(self, data):\n        self.data = data\n        self.next = None\n\nclass LinkedList:\n    def __init__(self):\n        self.head = None"
+                "Linked Lists": "class Node:\n    def __init__(self, data):\n        self.data = data\n        self.next = None\n\nclass LinkedList:\n    def __init__(self):\n        self.head = None",
+                "Stacks & Queues": "class Stack:\n    def __init__(self):\n        self.items = []\n    \n    def push(self, item):\n        self.items.append(item)\n    \n    def pop(self):\n        return self.items.pop()",
+                "Trees & BST": "class TreeNode:\n    def __init__(self, val=0, left=None, right=None):\n        self.val = val\n        self.left = left\n        self.right = right"
             },
             "java": {
                 "Arrays & Strings": "// Array example\nint[] arr = {1, 2, 3, 4, 5};\nSystem.out.println(\"Array: \" + Arrays.toString(arr));\n\n// String example\nString s = \"hello\";\nSystem.out.println(\"String: \" + s);",
@@ -414,6 +468,13 @@ class OpenAIService:
                 "public static Object transformData(Object data) {",
                 "public static Object advancedOperation(Object data, Object parameters) {",
                 "public static Object complexSolution(Object data, Object constraints) {"
+            ],
+            "javascript": [
+                "function solution(data) {",
+                "function findElement(data, target) {",
+                "function transformData(data) {",
+                "function advancedOperation(data, parameters) {",
+                "function complexSolution(data, constraints) {"
             ]
         }
 
@@ -423,19 +484,33 @@ class OpenAIService:
 
     def _get_realistic_solution(self, language: str, chapter: str, level: int) -> str:
         """Get realistic solution code based on level"""
-        solutions = {
-            "python": [
+        if language == "python":
+            solutions = [
                 f"# Level {level} solution for {chapter}\ndef solution(data):\n    # Basic implementation\n    return data",
                 f"# Level {level} solution for {chapter}\ndef solution(data):\n    # Simple algorithm\n    result = []\n    for item in data:\n        if item:  # Some condition\n            result.append(item)\n    return result",
                 f"# Level {level} solution for {chapter}\ndef solution(data):\n    # Moderate complexity\n    if not data:\n        return None\n    \n    # Processing logic\n    processed = [x * 2 for x in data if x > 0]\n    return processed",
-                f"# Level {level} solution for {chapter}\ndef solution(data):\n    # Advanced algorithm\n    from collections import defaultdict\n    \n    if not data:\n        return {}\n    \n    # Complex processing\n    frequency = defaultdict(int)\n    for item in data:\n        frequency[item] += 1\n    \n    return dict(frequency)",
+                f"# Level {level} solution for {chapter}\ndef solution(data):\n    # Advanced algorithm\n    from collections import defaultdict\n    \n    if not data:\n        return {{}}\n    \n    # Complex processing\n    frequency = defaultdict(int)\n    for item in data:\n        frequency[item] += 1\n    \n    return dict(frequency)",
                 f"# Level {level} solution for {chapter}\ndef solution(data):\n    # Complex optimization\n    if not data:\n        return []\n    \n    # Multi-step processing\n    sorted_data = sorted(data)\n    result = []\n    \n    # Advanced algorithm\n    left, right = 0, len(sorted_data) - 1\n    while left <= right:\n        # Complex logic\n        result.append(sorted_data[left])\n        if left != right:\n            result.append(sorted_data[right])\n        left += 1\n        right -= 1\n    \n    return result"
             ]
-        }
+        elif language == "java":
+            solutions = [
+                f"// Level {level} solution for {chapter}\npublic static Object solution(Object data) {{\n    // Basic implementation\n    return data;\n}}",
+                f"// Level {level} solution for {chapter}\npublic static Object solution(Object data) {{\n    // Simple algorithm\n    return data;\n}}",
+                f"// Level {level} solution for {chapter}\npublic static Object solution(Object data) {{\n    // Moderate complexity\n    return data;\n}}",
+                f"// Level {level} solution for {chapter}\npublic static Object solution(Object data) {{\n    // Advanced algorithm\n    return data;\n}}",
+                f"// Level {level} solution for {chapter}\npublic static Object solution(Object data) {{\n    // Complex optimization\n    return data;\n}}"
+            ]
+        else:
+            solutions = [
+                f"// Level {level} solution for {chapter}\nfunction solution(data) {{\n    // Basic implementation\n    return data;\n}}",
+                f"// Level {level} solution for {chapter}\nfunction solution(data) {{\n    // Simple algorithm\n    return data;\n}}",
+                f"// Level {level} solution for {chapter}\nfunction solution(data) {{\n    // Moderate complexity\n    return data;\n}}",
+                f"// Level {level} solution for {chapter}\nfunction solution(data) {{\n    // Advanced algorithm\n    return data;\n}}",
+                f"// Level {level} solution for {chapter}\nfunction solution(data) {{\n    // Complex optimization\n    return data;\n}}"
+            ]
 
-        lang_solutions = solutions.get(language, solutions["python"])
         solution_index = min((level - 1) // 2, 4)
-        return lang_solutions[solution_index]
+        return solutions[solution_index]
 
     def _get_realistic_complexity(self, level: int, complexity_type: str) -> str:
         """Get realistic complexity based on level"""
@@ -455,19 +530,19 @@ class OpenAIService:
         return {
             "correctness_score": 75,
             "is_correct": True,
-            "feedback": "Code analysis would be performed here with OpenAI integration.",
-            "strengths": ["Good code structure", "Proper function definition"],
-            "improvements": ["Add more comments", "Handle edge cases"],
-            "efficiency_analysis": "Time complexity appears optimal",
+            "feedback": "Code analysis would be performed here with OpenAI integration. Currently using simulated analysis.",
+            "strengths": ["Good code structure", "Proper function definition", "Logical approach"],
+            "improvements": ["Add more comments", "Handle edge cases", "Consider optimization"],
+            "efficiency_analysis": "Time complexity appears optimal for this level",
             "bugs": [],
             "passed_test_cases": 3,
             "total_test_cases": 3,
-            "hints": ["Consider edge cases", "Test with different inputs"],
+            "hints": ["Consider edge cases", "Test with different inputs", "Review time complexity"],
             "analyzed_at": time.time()
         }
 
 
-# Rest of the backend remains the same...
+# Rest of the code remains the same...
 class ChapterManager:
     def __init__(self):
         self.chapters = [
@@ -518,7 +593,7 @@ chapter_manager = ChapterManager()
 cache = ContentCache()
 
 
-# Routes
+# Routes (same as before)
 @app.route('/api/health', methods=['GET'])
 def health_check():
     return jsonify({
