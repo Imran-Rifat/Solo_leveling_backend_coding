@@ -4,6 +4,7 @@ import openai
 import json
 import os
 import time
+import random
 from typing import List, Dict, Any
 from dotenv import load_dotenv
 
@@ -28,7 +29,6 @@ class OpenAIService:
 
         if self.api_key:
             try:
-                # Set the API key for openai package
                 openai.api_key = self.api_key
                 self.connected = True
                 print("✅ OpenAI API configured successfully")
@@ -42,9 +42,7 @@ class OpenAIService:
     def check_connection(self):
         if not self.connected:
             return False
-
         try:
-            # Simple test to check if API key works
             response = openai.ChatCompletion.create(
                 model=self.model,
                 messages=[{"role": "user", "content": "Say 'connected'"}],
@@ -55,17 +53,16 @@ class OpenAIService:
             print(f"OpenAI connection test failed: {e}")
             return False
 
-    def generate_comprehensive_chapter_content(self, chapter_name: str, topics: List[str], language: str) -> Dict[
-        str, Any]:
-        """Generate complete chapter content with 10 distinct questions of increasing difficulty"""
+    def generate_concept_content(self, chapter_name: str, topics: List[str], language: str) -> Dict[str, Any]:
+        """Generate concept explanation for a chapter"""
 
         if not self.connected or not self.check_connection():
-            print("OpenAI not available, using enhanced fallback content")
-            return self._get_enhanced_fallback_content(chapter_name, topics, language)
+            print(f"OpenAI not available, using enhanced fallback concept for {chapter_name}")
+            return self._create_enhanced_concept(chapter_name, topics, language)
 
-        print(f"🚀 Generating 10 questions for {chapter_name} in {language} via OpenAI...")
+        print(f"🚀 Generating concept content for {chapter_name} in {language}...")
 
-        prompt = self._build_chapter_prompt(chapter_name, topics, language)
+        prompt = self._build_concept_prompt(chapter_name, topics, language)
 
         try:
             response = openai.ChatCompletion.create(
@@ -80,248 +77,199 @@ class OpenAIService:
                         "content": prompt
                     }
                 ],
-                temperature=0.8,
-                max_tokens=12000
+                temperature=0.7,
+                max_tokens=2000
             )
 
             content = response.choices[0].message.content.strip()
-            print(f"✅ Received OpenAI response for {chapter_name}")
+            print(f"✅ Received OpenAI concept response for {chapter_name}")
 
-            # Try to parse the JSON response
             try:
                 result = json.loads(content)
-
-                # Validate the structure
-                if self._validate_chapter_content(result, chapter_name, language):
-                    print(f"✅ Successfully generated 10 questions for {chapter_name}")
+                if self._validate_concept_content(result):
+                    print(f"✅ Successfully generated concept for {chapter_name}")
                     return result
                 else:
-                    print("❌ Invalid structure from OpenAI, using enhanced fallback")
-                    return self._get_enhanced_fallback_content(chapter_name, topics, language)
+                    print(f"❌ Invalid concept structure for {chapter_name}, using fallback")
+                    return self._create_enhanced_concept(chapter_name, topics, language)
 
             except json.JSONDecodeError as e:
-                print(f"❌ JSON decode error: {e}")
-                print(f"Raw response preview: {content[:500]}...")
-                return self._get_enhanced_fallback_content(chapter_name, topics, language)
+                print(f"❌ JSON decode error for concept: {e}")
+                return self._create_enhanced_concept(chapter_name, topics, language)
 
         except Exception as e:
-            print(f"❌ OpenAI API error: {e}")
-            return self._get_enhanced_fallback_content(chapter_name, topics, language)
+            print(f"❌ OpenAI API error for concept: {e}")
+            return self._create_enhanced_concept(chapter_name, topics, language)
 
-    def _build_chapter_prompt(self, chapter_name: str, topics: List[str], language: str) -> str:
+    def _build_concept_prompt(self, chapter_name: str, topics: List[str], language: str) -> str:
+        """Build prompt for concept content"""
         return f"""
-        Create comprehensive learning content for "{chapter_name}" in {language}.
+        Create comprehensive learning concept content for "{chapter_name}" in {language}.
 
-        CHAPTER CONCEPT:
-        - Provide detailed theory explanation with {language} examples
-        - Include key concepts, algorithms, and implementations
-        - Add real-world applications
-        - Make it engaging and educational
-
-        GENERATE 10 DISTINCT PRACTICE QUESTIONS with PROGRESSIVE DIFFICULTY:
-
-        Level Progression:
-        - Level 1-2: Basic syntax and simple operations
-        - Level 3-5: Intermediate problems with algorithms  
-        - Level 6-8: Complex problems requiring optimization
-        - Level 9-10: Advanced challenges and real-world scenarios
-
-        For EACH question, provide these EXACT fields in JSON:
-        - level: integer from 1 to 10
-        - problem_id: unique string identifier
-        - title: descriptive title reflecting difficulty
-        - description: detailed problem statement
-        - examples: array of objects with input, output, explanation
-        - hints: array of 3 strings (general to specific)
-        - function_signature: {language} function signature
-        - test_cases: array of objects with input, expected_output
-        - solution: complete working solution code
-        - solution_explanation: detailed explanation
-        - time_complexity: expected time complexity
-        - space_complexity: expected space complexity
-
-        IMPORTANT: Create DISTINCT questions that progressively increase in difficulty.
-        Level 1 should be very basic, Level 10 should be challenging.
+        Provide detailed theory explanation covering:
+        - Fundamental concepts and definitions
+        - Key operations and their implementations
+        - Time and space complexity analysis
+        - Real-world applications and use cases
+        - {language}-specific best practices and examples
 
         Topics to cover: {', '.join(topics)}
-        Programming Language: {language}
 
-        Return ONLY valid JSON with this exact structure:
+        Return as JSON with these exact fields:
         {{
-            "concept": {{
-                "title": "string",
-                "overview": "string", 
-                "theory_content": "string with HTML formatting",
-                "learning_objectives": ["array", "of", "strings"],
-                "code_examples": [{{"code": "string", "explanation": "string"}}],
-                "key_takeaways": ["array", "of", "strings"]
-            }},
-            "questions": [
+            "title": "comprehensive title",
+            "overview": "brief overview description",
+            "theory_content": "detailed HTML-formatted content with examples",
+            "learning_objectives": ["objective1", "objective2", "objective3", "objective4"],
+            "code_examples": [
                 {{
-                    "level": 1,
-                    "problem_id": "unique_string",
-                    "title": "string",
-                    "description": "string",
-                    "examples": [{{"input": "string", "output": "string", "explanation": "string"}}],
-                    "hints": ["hint1", "hint2", "hint3"],
-                    "function_signature": "string", 
-                    "test_cases": [{{"input": "string", "expected_output": "string"}}],
-                    "solution": "string",
-                    "solution_explanation": "string",
-                    "time_complexity": "string",
-                    "space_complexity": "string"
+                    "code": "code example in {language}",
+                    "explanation": "explanation of the code"
                 }}
-                // ... 9 more questions for levels 2-10
-            ]
+            ],
+            "key_takeaways": ["takeaway1", "takeaway2", "takeaway3"]
         }}
+
+        Make the content engaging, educational, and practical for learners.
+        Include {language} code examples that demonstrate key concepts.
         """
 
-    def _validate_chapter_content(self, content: Dict, chapter_name: str, language: str) -> bool:
-        """Validate the structure of the generated content"""
+    def _validate_concept_content(self, concept: Dict) -> bool:
+        """Validate concept content structure"""
         try:
-            # Check basic structure
-            if not isinstance(content, dict):
-                return False
+            required_fields = [
+                'title', 'overview', 'theory_content', 'learning_objectives',
+                'code_examples', 'key_takeaways'
+            ]
 
-            if 'concept' not in content or 'questions' not in content:
-                return False
-
-            # Check questions
-            questions = content['questions']
-            if not isinstance(questions, list) or len(questions) != 10:
-                return False
-
-            # Check each question has required fields
-            for i, question in enumerate(questions):
-                if question.get('level') != i + 1:
+            for field in required_fields:
+                if field not in concept:
                     return False
 
-                required_fields = [
-                    'problem_id', 'title', 'description', 'examples',
-                    'hints', 'function_signature', 'test_cases',
-                    'solution', 'solution_explanation', 'time_complexity', 'space_complexity'
-                ]
-
-                for field in required_fields:
-                    if field not in question:
-                        return False
-
             return True
-
-        except Exception as e:
-            print(f"Validation error: {e}")
+        except:
             return False
 
-    def _get_enhanced_fallback_content(self, chapter_name: str, topics: List[str], language: str) -> Dict[str, Any]:
-        """Create realistic fallback content that's better than basic templates"""
-        print(f"Creating enhanced fallback content for {chapter_name}")
-
-        return {
-            "concept": self._create_realistic_concept(chapter_name, topics, language),
-            "questions": [self._create_realistic_question(chapter_name, topics, language, level) for level in
-                          range(1, 11)],
-            "language": language,
-            "generated_at": time.time(),
-            "fallback": True
-        }
-
-    def _create_realistic_concept(self, chapter_name: str, topics: List[str], language: str) -> Dict[str, Any]:
-        """Create realistic concept content"""
+    def _create_enhanced_concept(self, chapter_name: str, topics: List[str], language: str) -> Dict[str, Any]:
+        """Create enhanced fallback concept content"""
         concept_templates = {
             "Arrays & Strings": {
                 "title": f"Mastering Arrays & Strings in {language}",
                 "overview": f"Learn fundamental array and string manipulation techniques in {language} with practical examples and real-world applications.",
                 "theory_content": f"""
                 <h2>Arrays & Strings Fundamentals in {language}</h2>
-                <p>Arrays and strings are fundamental data structures that form the building blocks of most algorithms.</p>
+                <p>Arrays and strings are fundamental data structures that form the building blocks of most algorithms and applications.</p>
 
-                <h3>Key Concepts</h3>
+                <h3>📚 Core Concepts</h3>
                 <ul>
-                    <li><strong>Array Operations:</strong> Access, insertion, deletion, traversal</li>
-                    <li><strong>String Manipulation:</strong> Concatenation, slicing, searching, pattern matching</li>
-                    <li><strong>Complexity Analysis:</strong> Time and space complexity for common operations</li>
-                    <li><strong>{language} Specifics:</strong> Built-in methods and best practices</li>
+                    <li><strong>Arrays:</strong> Contiguous memory locations storing elements of the same type</li>
+                    <li><strong>Strings:</strong> Sequences of characters with various manipulation methods</li>
+                    <li><strong>Indexing:</strong> Zero-based access to elements</li>
+                    <li><strong>Mutability:</strong> Understanding which operations modify the original data</li>
                 </ul>
 
-                <h3>Real-world Applications</h3>
+                <h3>⚡ Key Operations</h3>
+                <ul>
+                    <li><strong>Access:</strong> O(1) time complexity for random access</li>
+                    <li><strong>Search:</strong> O(n) for linear search, better with binary search on sorted arrays</li>
+                    <li><strong>Insertion/Deletion:</strong> O(n) for arrays, varies for other structures</li>
+                    <li><strong>Sorting:</strong> Various algorithms with different time complexities</li>
+                </ul>
+
+                <h3>🔧 {language} Specific Features</h3>
+                <p>{language} provides built-in methods for efficient array and string manipulation:</p>
+                <ul>
+                    <li>List comprehensions and slicing</li>
+                    <li>String methods for searching and manipulation</li>
+                    <li>Memory-efficient data structures</li>
+                </ul>
+
+                <h3>🌍 Real-world Applications</h3>
                 <ul>
                     <li>Text processing and analysis</li>
-                    <li>Data storage and retrieval</li>
-                    <li>Algorithm optimization</li>
-                    <li>Problem-solving patterns</li>
+                    <li>Data storage and retrieval systems</li>
+                    <li>Algorithm implementations</li>
+                    <li>Problem-solving in technical interviews</li>
                 </ul>
 
-                <h3>Common Patterns</h3>
-                <p>Two-pointer technique, sliding window, frequency counting, and more.</p>
+                <h3>🚀 Learning Path</h3>
+                <p>Progress through 10 difficulty levels from basic operations to advanced algorithms and optimizations.</p>
                 """
             },
             "Linked Lists": {
                 "title": f"Linked Lists Mastery in {language}",
-                "overview": f"Understand linked list data structures, their implementations, and applications in {language}.",
+                "overview": f"Understand linked list data structures, their implementations, and applications in {language} with progressive difficulty levels.",
                 "theory_content": f"""
                 <h2>Linked Lists in {language}</h2>
-                <p>Linked lists are linear data structures where elements are linked using pointers, providing dynamic memory allocation.</p>
+                <p>Linked lists are dynamic data structures where elements are stored in nodes, each containing data and a reference to the next node.</p>
 
-                <h3>Types of Linked Lists</h3>
+                <h3>📚 Types of Linked Lists</h3>
                 <ul>
-                    <li><strong>Singly Linked Lists:</strong> Each node points to the next</li>
-                    <li><strong>Doubly Linked Lists:</strong> Nodes point to both next and previous</li>
-                    <li><strong>Circular Linked Lists:</strong> Last node points back to first</li>
+                    <li><strong>Singly Linked Lists:</strong> Each node points to the next node only</li>
+                    <li><strong>Doubly Linked Lists:</strong> Nodes point to both next and previous nodes</li>
+                    <li><strong>Circular Linked Lists:</strong> Last node points back to the first node</li>
                 </ul>
 
-                <h3>Key Operations</h3>
+                <h3>⚡ Key Operations & Complexities</h3>
                 <ul>
-                    <li>Insertion at beginning, middle, end</li>
-                    <li>Deletion operations</li>
-                    <li>Traversal and searching</li>
-                    <li>Cycle detection</li>
+                    <li><strong>Access:</strong> O(n) - must traverse from head</li>
+                    <li><strong>Search:</strong> O(n) - linear search required</li>
+                    <li><strong>Insertion:</strong> O(1) at head, O(n) at tail</li>
+                    <li><strong>Deletion:</strong> O(1) at head, O(n) at tail</li>
                 </ul>
 
-                <h3>{language} Implementation</h3>
-                <p>Learn how to implement linked lists using classes/structs and pointers/references.</p>
+                <h3>🔧 {language} Implementation</h3>
+                <p>In {language}, linked lists are typically implemented using classes:</p>
+                <ul>
+                    <li>Node class with data and next pointer</li>
+                    <li>LinkedList class managing head and operations</li>
+                    <li>Memory-efficient dynamic allocation</li>
+                </ul>
+
+                <h3>🎯 Common Patterns</h3>
+                <ul>
+                    <li>Two-pointer technique (fast and slow pointers)</li>
+                    <li>Cycle detection using Floyd's algorithm</li>
+                    <li>Reversal and rotation operations</li>
+                    <li>Merge and split operations</li>
+                </ul>
+
+                <h3>🌍 Applications</h3>
+                <ul>
+                    <li>Implementing stacks and queues</li>
+                    <li>Memory management systems</li>
+                    <li>Undo functionality in applications</li>
+                    <li>Polynomial arithmetic</li>
+                </ul>
                 """
             },
             "Stacks & Queues": {
                 "title": f"Stacks & Queues in {language}",
-                "overview": f"Master stack and queue data structures with practical implementations in {language}.",
+                "overview": f"Master stack (LIFO) and queue (FIFO) data structures with practical implementations in {language}.",
                 "theory_content": f"""
                 <h2>Stacks & Queues in {language}</h2>
-                <p>Stacks (LIFO) and queues (FIFO) are fundamental linear data structures with diverse applications.</p>
+                <p>Stacks and queues are fundamental linear data structures with specific insertion and removal patterns.</p>
 
-                <h3>Stack Operations</h3>
+                <h3>📚 Stack (LIFO - Last In, First Out)</h3>
                 <ul>
-                    <li>Push, pop, peek operations</li>
-                    <li>Implementation using arrays/linked lists</li>
-                    <li>Applications: function calls, undo/redo</li>
+                    <li><strong>Operations:</strong> Push (add), Pop (remove), Peek (view top)</li>
+                    <li><strong>Implementation:</strong> Arrays or linked lists</li>
+                    <li><strong>Complexity:</strong> O(1) for all operations</li>
                 </ul>
 
-                <h3>Queue Operations</h3>
+                <h3>📚 Queue (FIFO - First In, First Out)</h3>
                 <ul>
-                    <li>Enqueue, dequeue operations</li>
-                    <li>Circular queues and priority queues</li>
-                    <li>Applications: task scheduling, BFS</li>
-                </ul>
-                """
-            },
-            "Trees & BST": {
-                "title": f"Trees & Binary Search Trees in {language}",
-                "overview": f"Learn tree data structures and binary search trees with efficient implementations in {language}.",
-                "theory_content": f"""
-                <h2>Trees & BST in {language}</h2>
-                <p>Trees are hierarchical data structures essential for representing nested relationships.</p>
-
-                <h3>Tree Concepts</h3>
-                <ul>
-                    <li>Root, nodes, leaves, depth, height</li>
-                    <li>Binary trees and n-ary trees</li>
-                    <li>Tree traversal algorithms</li>
+                    <li><strong>Operations:</strong> Enqueue (add), Dequeue (remove), Peek (view front)</li>
+                    <li><strong>Types:</strong> Simple, circular, priority, double-ended</li>
+                    <li><strong>Complexity:</strong> O(1) for all operations with proper implementation</li>
                 </ul>
 
-                <h3>Binary Search Trees</h3>
+                <h3>🔧 {language} Implementations</h3>
+                <p>{language} provides various ways to implement stacks and queues:</p>
                 <ul>
-                    <li>BST properties and operations</li>
-                    <li>Search, insertion, deletion</li>
-                    <li>Balanced trees (AVL, Red-Black)</li>
+                    <li>Using lists with append/pop operations</li>
+                    <li>Collections.deque for efficient double-ended operations</li>
+                    <li>Custom classes for specific requirements</li>
                 </ul>
                 """
             }
@@ -330,8 +278,29 @@ class OpenAIService:
         # Get template or create generic one
         template = concept_templates.get(chapter_name, {
             "title": f"{chapter_name} in {language}",
-            "overview": f"Comprehensive guide to {chapter_name} concepts and implementations in {language}.",
-            "theory_content": f"<h2>{chapter_name} Concepts</h2><p>Detailed theory and practical implementations of {chapter_name.lower()} in {language}.</p>"
+            "overview": f"Comprehensive guide to {chapter_name} concepts and implementations in {language}. Progress through 10 difficulty levels from basic to advanced problems.",
+            "theory_content": f"""
+                <h2>{chapter_name} Concepts</h2>
+                <p>Master {chapter_name.lower()} through progressive learning with 10 difficulty levels.</p>
+
+                <h3>📚 Fundamental Concepts</h3>
+                <ul>
+                    <li>Core data structure principles</li>
+                    <li>Key operations and their complexities</li>
+                    <li>{language}-specific implementations</li>
+                    <li>Best practices and patterns</li>
+                </ul>
+
+                <h3>🎯 Learning Progression</h3>
+                <p>Start with basic operations (Level 1-3), move to algorithms (Level 4-6), 
+                tackle optimization (Level 7-8), and master advanced scenarios (Level 9-10).</p>
+
+                <h3>🔧 {language} Features</h3>
+                <p>Learn {language}-specific techniques and built-in methods for efficient {chapter_name.lower()} manipulation.</p>
+
+                <h3>🌍 Real-world Applications</h3>
+                <p>Apply your knowledge to practical problems and technical interview scenarios.</p>
+                """
         })
 
         return {
@@ -339,11 +308,11 @@ class OpenAIService:
             "overview": template["overview"],
             "theory_content": template["theory_content"],
             "learning_objectives": [
-                f"Understand {chapter_name} fundamental concepts",
-                f"Implement {chapter_name} operations in {language}",
-                "Solve problems of increasing complexity",
-                "Analyze algorithm efficiency",
-                "Apply knowledge to real-world scenarios"
+                f"Understand {chapter_name} fundamental concepts and operations",
+                f"Implement {chapter_name} solutions in {language}",
+                "Analyze time and space complexity of algorithms",
+                "Solve problems of increasing difficulty (Level 1-10)",
+                "Apply knowledge to real-world scenarios and interviews"
             ],
             "code_examples": [
                 {
@@ -353,196 +322,380 @@ class OpenAIService:
             ],
             "key_takeaways": [
                 "Master core data structure concepts",
-                "Develop problem-solving skills",
-                "Understand time and space complexity",
-                "Apply knowledge to technical interviews"
+                "Develop systematic problem-solving approach",
+                "Understand algorithm efficiency and optimization",
+                "Build confidence through progressive difficulty levels",
+                "Prepare for technical interviews and real-world applications"
             ]
         }
 
-    def _create_realistic_question(self, chapter_name: str, topics: List[str], language: str, level: int) -> Dict[
-        str, Any]:
-        """Create realistic, varied questions for each level"""
-
-        # Different question templates for different levels
-        question_templates = [
-            # Level 1-2: Basic operations
-            {
-                "title": f"Basic {chapter_name} Operation",
-                "description": f"Implement a basic operation for {chapter_name} in {language}. Focus on fundamental syntax and simple operations.",
-                "examples": [{"input": "simple input", "output": "expected output",
-                              "explanation": "Basic example demonstrating the operation"}],
-                "hints": ["Start with the simplest approach", "Consider basic edge cases",
-                          "Test with the provided examples"]
-            },
-            # Level 3-4: Simple algorithms
-            {
-                "title": f"Element Finding in {chapter_name}",
-                "description": f"Find specific elements in {chapter_name} based on given conditions. This requires basic algorithmic thinking.",
-                "examples": [{"input": "search criteria", "output": "found elements",
-                              "explanation": "Example of searching within the data structure"}],
-                "hints": ["Think about traversal methods", "Consider efficiency of your approach",
-                          "Handle empty or edge cases"]
-            },
-            # Level 5-6: Moderate complexity
-            {
-                "title": f"{chapter_name} Transformation",
-                "description": f"Transform the {chapter_name} according to specific rules. This involves multiple steps and conditions.",
-                "examples": [{"input": "original structure", "output": "transformed structure",
-                              "explanation": "Example of data transformation"}],
-                "hints": ["Plan your approach step by step", "Consider if multiple passes are needed",
-                          "Look for optimization opportunities"]
-            },
-            # Level 7-8: Advanced operations
-            {
-                "title": f"Advanced {chapter_name} Algorithm",
-                "description": f"Implement an advanced algorithm for {chapter_name} manipulation. Focus on efficiency and edge cases.",
-                "examples": [{"input": "complex input data", "output": "algorithm result",
-                              "explanation": "Complex example requiring advanced processing"}],
-                "hints": ["Use appropriate data structures", "Consider time and space complexity",
-                          "Test with various edge cases"]
-            },
-            # Level 9-10: Complex problems
-            {
-                "title": f"Complex {chapter_name} Challenge",
-                "description": f"Solve a complex real-world problem using {chapter_name}. This requires optimal solutions and thorough testing.",
-                "examples": [{"input": "real-world scenario input", "output": "optimal solution",
-                              "explanation": "Real-world application example"}],
-                "hints": ["Break the problem into subproblems", "Consider multiple solution approaches",
-                          "Optimize for worst-case scenarios"]
-            }
-        ]
-
-        template_index = min((level - 1) // 2, 4)  # Map levels to templates
-        template = question_templates[template_index]
-
-        return {
-            "level": level,
-            "problem_id": f"{chapter_name.lower().replace(' ', '_')}_level_{level}",
-            "title": f"{template['title']} - Level {level}",
-            "description": f"{template['description']} Difficulty level: {level}/10.",
-            "examples": template["examples"],
-            "hints": template["hints"],
-            "function_signature": self._get_realistic_function_signature(language, chapter_name, level),
-            "test_cases": [
-                {"input": f"test_case_1_level_{level}", "expected_output": f"result_1_level_{level}"},
-                {"input": f"test_case_2_level_{level}", "expected_output": f"result_2_level_{level}"},
-                {"input": f"test_case_3_level_{level}", "expected_output": f"result_3_level_{level}"}
-            ],
-            "solution": self._get_realistic_solution(language, chapter_name, level),
-            "solution_explanation": f"This solution demonstrates level {level} complexity for {chapter_name} problems with appropriate algorithmic thinking.",
-            "time_complexity": self._get_realistic_complexity(level, "time"),
-            "space_complexity": self._get_realistic_complexity(level, "space")
-        }
-
     def _get_concept_example_code(self, language: str, chapter_name: str) -> str:
-        """Get realistic example code for the concept"""
+        """Get concept example code"""
         examples = {
             "python": {
-                "Arrays & Strings": "# Array example\narr = [1, 2, 3, 4, 5]\nprint(\"Array:\", arr)\n\n# String example\ns = \"hello\"\nprint(\"String:\", s)\nprint(\"Reversed:\", s[::-1])",
-                "Linked Lists": "class Node:\n    def __init__(self, data):\n        self.data = data\n        self.next = None\n\nclass LinkedList:\n    def __init__(self):\n        self.head = None",
-                "Stacks & Queues": "class Stack:\n    def __init__(self):\n        self.items = []\n    \n    def push(self, item):\n        self.items.append(item)\n    \n    def pop(self):\n        return self.items.pop()",
-                "Trees & BST": "class TreeNode:\n    def __init__(self, val=0, left=None, right=None):\n        self.val = val\n        self.left = left\n        self.right = right"
-            },
-            "java": {
-                "Arrays & Strings": "// Array example\nint[] arr = {1, 2, 3, 4, 5};\nSystem.out.println(\"Array: \" + Arrays.toString(arr));\n\n// String example\nString s = \"hello\";\nSystem.out.println(\"String: \" + s);",
-                "Linked Lists": "class Node {\n    int data;\n    Node next;\n    \n    Node(int data) {\n        this.data = data;\n        this.next = null;\n    }\n}"
+                "Arrays & Strings": "# Array creation and basic operations\narr = [1, 2, 3, 4, 5]\nprint(\"Array:\", arr)\nprint(\"Length:\", len(arr))\nprint(\"First element:\", arr[0])\n\n# String operations\ns = \"Hello, World!\"\nprint(\"String:\", s)\nprint(\"Uppercase:\", s.upper())\nprint(\"Reversed:\", s[::-1])",
+                "Linked Lists": "class Node:\n    def __init__(self, data):\n        self.data = data\n        self.next = None\n\nclass LinkedList:\n    def __init__(self):\n        self.head = None\n    \n    def append(self, data):\n        new_node = Node(data)\n        if not self.head:\n            self.head = new_node\n            return\n        current = self.head\n        while current.next:\n            current = current.next\n        current.next = new_node",
+                "Stacks & Queues": "# Stack implementation using list\nstack = []\nstack.append(1)  # push\nstack.append(2)\nstack.append(3)\nprint(\"Stack:\", stack)\npopped = stack.pop()  # pop\nprint(\"Popped:\", popped)\nprint(\"Stack after pop:\", stack)\n\n# Queue implementation\nfrom collections import deque\nqueue = deque()\nqueue.append(1)  # enqueue\nqueue.append(2)\nqueue.append(3)\nprint(\"Queue:\", queue)\ndequeued = queue.popleft()  # dequeue\nprint(\"Dequeued:\", dequeued)\nprint(\"Queue after dequeue:\", queue)"
             }
         }
 
         lang_examples = examples.get(language, examples["python"])
-        return lang_examples.get(chapter_name, f"# {chapter_name} example in {language}")
+        return lang_examples.get(chapter_name,
+                                 f"# {chapter_name} implementation in {language}\n# Example code would be shown here")
 
-    def _get_realistic_function_signature(self, language: str, chapter: str, level: int) -> str:
-        """Get realistic function signatures based on level"""
-        signatures = {
-            "python": [
-                "def solution(data):",  # Level 1-2
-                "def find_element(data, target):",  # Level 3-4
-                "def transform_data(data):",  # Level 5-6
-                "def advanced_operation(data, parameters):",  # Level 7-8
-                "def complex_solution(data, constraints):"  # Level 9-10
-            ],
-            "java": [
-                "public static Object solution(Object data) {",
-                "public static Object findElement(Object data, Object target) {",
-                "public static Object transformData(Object data) {",
-                "public static Object advancedOperation(Object data, Object parameters) {",
-                "public static Object complexSolution(Object data, Object constraints) {"
-            ],
-            "javascript": [
-                "function solution(data) {",
-                "function findElement(data, target) {",
-                "function transformData(data) {",
-                "function advancedOperation(data, parameters) {",
-                "function complexSolution(data, constraints) {"
-            ]
+    def generate_single_question(self, chapter_name: str, topics: List[str], language: str, level: int) -> Dict[
+        str, Any]:
+        """Generate a single question for a specific level"""
+
+        if not self.connected or not self.check_connection():
+            print(f"OpenAI not available, using enhanced fallback for level {level}")
+            return self._create_enhanced_question(chapter_name, topics, language, level)
+
+        print(f"🚀 Generating question for {chapter_name} - Level {level} in {language}...")
+
+        prompt = self._build_single_question_prompt(chapter_name, topics, language, level)
+
+        try:
+            response = openai.ChatCompletion.create(
+                model=self.model,
+                messages=[
+                    {
+                        "role": "system",
+                        "content": "You are an expert computer science educator creating coding problems for data structures and algorithms."
+                    },
+                    {
+                        "role": "user",
+                        "content": prompt
+                    }
+                ],
+                temperature=0.7,
+                max_tokens=1500
+            )
+
+            content = response.choices[0].message.content.strip()
+            print(f"✅ Received OpenAI response for level {level}")
+
+            try:
+                result = json.loads(content)
+                if self._validate_question(result, level):
+                    print(f"✅ Successfully generated question for level {level}")
+                    return result
+                else:
+                    print(f"❌ Invalid question structure for level {level}, using fallback")
+                    return self._create_enhanced_question(chapter_name, topics, language, level)
+
+            except json.JSONDecodeError as e:
+                print(f"❌ JSON decode error for level {level}: {e}")
+                return self._create_enhanced_question(chapter_name, topics, language, level)
+
+        except Exception as e:
+            print(f"❌ OpenAI API error for level {level}: {e}")
+            return self._create_enhanced_question(chapter_name, topics, language, level)
+
+    def _build_single_question_prompt(self, chapter_name: str, topics: List[str], language: str, level: int) -> str:
+        """Build prompt for a single question"""
+
+        difficulty_descriptions = {
+            1: "very basic beginner level focusing on fundamental syntax and simple operations",
+            2: "basic beginner level with simple multi-step problems",
+            3: "easy level requiring basic algorithmic thinking",
+            4: "easy-intermediate level with multiple conditions",
+            5: "intermediate level with common algorithms",
+            6: "intermediate-advanced level requiring optimization",
+            7: "advanced level with complex data structures",
+            8: "very advanced level with multiple constraints",
+            9: "expert level with complex real-world scenarios",
+            10: "master level requiring optimal solutions"
         }
 
-        lang_sigs = signatures.get(language, signatures["python"])
-        sig_index = min((level - 1) // 2, 4)
-        return lang_sigs[sig_index]
+        difficulty = difficulty_descriptions.get(level, "appropriate difficulty")
 
-    def _get_realistic_solution(self, language: str, chapter: str, level: int) -> str:
-        """Get realistic solution code based on level"""
-        if language == "python":
-            solutions = [
-                f"# Level {level} solution for {chapter}\ndef solution(data):\n    # Basic implementation\n    return data",
-                f"# Level {level} solution for {chapter}\ndef solution(data):\n    # Simple algorithm\n    result = []\n    for item in data:\n        if item:  # Some condition\n            result.append(item)\n    return result",
-                f"# Level {level} solution for {chapter}\ndef solution(data):\n    # Moderate complexity\n    if not data:\n        return None\n    \n    # Processing logic\n    processed = [x * 2 for x in data if x > 0]\n    return processed",
-                f"# Level {level} solution for {chapter}\ndef solution(data):\n    # Advanced algorithm\n    from collections import defaultdict\n    \n    if not data:\n        return {{}}\n    \n    # Complex processing\n    frequency = defaultdict(int)\n    for item in data:\n        frequency[item] += 1\n    \n    return dict(frequency)",
-                f"# Level {level} solution for {chapter}\ndef solution(data):\n    # Complex optimization\n    if not data:\n        return []\n    \n    # Multi-step processing\n    sorted_data = sorted(data)\n    result = []\n    \n    # Advanced algorithm\n    left, right = 0, len(sorted_data) - 1\n    while left <= right:\n        # Complex logic\n        result.append(sorted_data[left])\n        if left != right:\n            result.append(sorted_data[right])\n        left += 1\n        right -= 1\n    \n    return result"
+        return f"""
+        Create a SINGLE coding problem about {chapter_name} for {language} programmers.
+
+        Difficulty Level: {level}/10 - {difficulty}
+        Programming Language: {language}
+        Topics: {', '.join(topics)}
+
+        Requirements:
+        - Make it appropriate for level {level} difficulty
+        - Focus on {self._get_level_focus(level)}
+        - Include clear problem statement
+        - Provide 2-3 examples with explanations
+        - Include 3 helpful hints
+        - Provide 3-5 test cases
+        - Include a complete solution with explanation
+        - Specify time and space complexity
+
+        Return as JSON with these exact fields:
+        {{
+            "level": {level},
+            "problem_id": "unique_string",
+            "title": "descriptive title",
+            "description": "detailed problem statement",
+            "examples": [
+                {{"input": "example input", "output": "example output", "explanation": "explanation"}}
+            ],
+            "hints": ["hint1", "hint2", "hint3"],
+            "function_signature": "function signature in {language}",
+            "test_cases": [
+                {{"input": "test input", "expected_output": "expected output"}}
+            ],
+            "solution": "complete solution code",
+            "solution_explanation": "detailed explanation",
+            "time_complexity": "time complexity",
+            "space_complexity": "space complexity"
+        }}
+
+        Make sure the problem is distinct and focuses on {chapter_name} concepts.
+        """
+
+    def _get_level_focus(self, level: int) -> str:
+        focuses = {
+            1: "basic syntax and single-step operations",
+            2: "simple data structure operations",
+            3: "basic loops and conditions",
+            4: "multiple conditions and simple patterns",
+            5: "common algorithms and moderate complexity",
+            6: "optimization considerations",
+            7: "advanced data structures",
+            8: "complex constraints and edge cases",
+            9: "real-world application scenarios",
+            10: "optimal solutions and performance"
+        }
+        return focuses.get(level, "appropriate problem solving")
+
+    def _validate_question(self, question: Dict, expected_level: int) -> bool:
+        """Validate a single question structure"""
+        try:
+            required_fields = [
+                'level', 'problem_id', 'title', 'description', 'examples',
+                'hints', 'function_signature', 'test_cases', 'solution',
+                'solution_explanation', 'time_complexity', 'space_complexity'
             ]
-        elif language == "java":
-            solutions = [
-                f"// Level {level} solution for {chapter}\npublic static Object solution(Object data) {{\n    // Basic implementation\n    return data;\n}}",
-                f"// Level {level} solution for {chapter}\npublic static Object solution(Object data) {{\n    // Simple algorithm\n    return data;\n}}",
-                f"// Level {level} solution for {chapter}\npublic static Object solution(Object data) {{\n    // Moderate complexity\n    return data;\n}}",
-                f"// Level {level} solution for {chapter}\npublic static Object solution(Object data) {{\n    // Advanced algorithm\n    return data;\n}}",
-                f"// Level {level} solution for {chapter}\npublic static Object solution(Object data) {{\n    // Complex optimization\n    return data;\n}}"
+
+            for field in required_fields:
+                if field not in question:
+                    return False
+
+            return question.get('level') == expected_level
+        except:
+            return False
+
+    def _create_enhanced_question(self, chapter_name: str, topics: List[str], language: str, level: int) -> Dict[
+        str, Any]:
+        """Create enhanced fallback question with realistic content"""
+
+        # Different question types for different levels
+        question_types = [
+            # Level 1-2: Basic operations
+            {
+                "template": "basic_operation",
+                "title": f"Basic {self._get_operation_name(chapter_name, level)}",
+                "description": f"Implement a basic {self._get_operation_name(chapter_name, level).lower()} operation for {chapter_name} in {language}.",
+                "focus": "fundamental syntax and simple operations"
+            },
+            # Level 3-4: Simple algorithms
+            {
+                "template": "element_finding",
+                "title": f"Find Element in {chapter_name}",
+                "description": f"Find specific elements in {chapter_name} based on given conditions.",
+                "focus": "basic algorithmic thinking and searching"
+            },
+            # Level 5-6: Data processing
+            {
+                "template": "data_processing",
+                "title": f"Process {chapter_name} Data",
+                "description": f"Process and transform {chapter_name} data according to specific rules.",
+                "focus": "data transformation and processing"
+            },
+            # Level 7-8: Advanced operations
+            {
+                "template": "advanced_algorithm",
+                "title": f"Advanced {chapter_name} Algorithm",
+                "description": f"Implement an advanced algorithm for {chapter_name} manipulation.",
+                "focus": "complex algorithms and optimization"
+            },
+            # Level 9-10: Complex problems
+            {
+                "template": "complex_challenge",
+                "title": f"Complex {chapter_name} Challenge",
+                "description": f"Solve a complex problem using {chapter_name} with optimal solutions.",
+                "focus": "optimal solutions and real-world scenarios"
+            }
+        ]
+
+        template_index = min((level - 1) // 2, 4)
+        template = question_types[template_index]
+
+        return {
+            "level": level,
+            "problem_id": f"{chapter_name.lower().replace(' ', '_')}_level_{level}_{random.randint(1000, 9999)}",
+            "title": f"{template['title']} - Level {level}",
+            "description": f"{template['description']} This is a level {level}/10 problem focusing on {template['focus']}.",
+            "examples": self._generate_examples(chapter_name, level),
+            "hints": self._generate_hints(chapter_name, level),
+            "function_signature": self._generate_function_signature(language, chapter_name, level),
+            "test_cases": self._generate_test_cases(level),
+            "solution": self._generate_solution(language, chapter_name, level),
+            "solution_explanation": f"This solution demonstrates a level {level} approach to {chapter_name} problems with appropriate complexity considerations.",
+            "time_complexity": self._generate_complexity(level, "time"),
+            "space_complexity": self._generate_complexity(level, "space")
+        }
+
+    def _get_operation_name(self, chapter_name: str, level: int) -> str:
+        """Get appropriate operation name based on chapter and level"""
+        operations = {
+            "Arrays & Strings": ["Traversal", "Search", "Reverse", "Sort", "Merge", "Rotate", "Partition", "Subarray",
+                                 "Palindrome", "Compression"],
+            "Linked Lists": ["Creation", "Traversal", "Insertion", "Deletion", "Reverse", "Cycle Detection", "Merge",
+                             "Sort", "Rotation", "Partition"],
+            "Stacks & Queues": ["Push/Pop", "Enqueue/Dequeue", "Min/Max", "Validation", "Reverse", "Sort",
+                                "Implementation", "Application", "Optimization", "Advanced"],
+            "Trees & BST": ["Traversal", "Search", "Insertion", "Deletion", "Height", "Validation", "Conversion",
+                            "Serialization", "Lowest Ancestor", "Path Sum"],
+            "Graphs": ["Traversal", "Search", "Path Finding", "Cycle Detection", "Connectivity", "Shortest Path",
+                       "Topological Sort", "Minimum Spanning", "Flow", "Advanced"],
+            "Dynamic Programming": ["Fibonacci", "Knapsack", "LCS", "LIS", "Coin Change", "Edit Distance",
+                                    "Matrix Chain", "Partition", "Word Break", "Advanced"]
+        }
+
+        chapter_ops = operations.get(chapter_name,
+                                     ["Operation", "Processing", "Algorithm", "Solution", "Implementation"])
+        return chapter_ops[min(level - 1, len(chapter_ops) - 1)]
+
+    def _generate_examples(self, chapter_name: str, level: int) -> List[Dict]:
+        """Generate realistic examples"""
+        examples = []
+
+        if level <= 3:
+            examples.append({
+                "input": f"input_data_level_{level}",
+                "output": f"output_result_level_{level}",
+                "explanation": f"Basic example showing the expected input-output transformation for level {level}"
+            })
+        elif level <= 6:
+            examples.extend([
+                {
+                    "input": f"sample_input_1_level_{level}",
+                    "output": f"expected_output_1_level_{level}",
+                    "explanation": f"First example demonstrating the operation"
+                },
+                {
+                    "input": f"sample_input_2_level_{level}",
+                    "output": f"expected_output_2_level_{level}",
+                    "explanation": f"Second example with different input"
+                }
+            ])
+        else:
+            examples.extend([
+                {
+                    "input": f"complex_input_1_level_{level}",
+                    "output": f"complex_output_1_level_{level}",
+                    "explanation": f"Complex example showing advanced scenario"
+                },
+                {
+                    "input": f"complex_input_2_level_{level}",
+                    "output": f"complex_output_2_level_{level}",
+                    "explanation": f"Additional complex example with edge cases"
+                }
+            ])
+
+        return examples
+
+    def _generate_hints(self, chapter_name: str, level: int) -> List[str]:
+        """Generate helpful hints"""
+        if level <= 3:
+            return [
+                "Start with the simplest possible approach",
+                "Focus on getting the basic functionality working first",
+                "Test with the provided examples"
+            ]
+        elif level <= 6:
+            return [
+                "Break the problem down into smaller steps",
+                "Consider if you can use any built-in functions or methods",
+                "Think about edge cases and how to handle them"
             ]
         else:
-            solutions = [
-                f"// Level {level} solution for {chapter}\nfunction solution(data) {{\n    // Basic implementation\n    return data;\n}}",
-                f"// Level {level} solution for {chapter}\nfunction solution(data) {{\n    // Simple algorithm\n    return data;\n}}",
-                f"// Level {level} solution for {chapter}\nfunction solution(data) {{\n    // Moderate complexity\n    return data;\n}}",
-                f"// Level {level} solution for {chapter}\nfunction solution(data) {{\n    // Advanced algorithm\n    return data;\n}}",
-                f"// Level {level} solution for {chapter}\nfunction solution(data) {{\n    // Complex optimization\n    return data;\n}}"
+            return [
+                "Consider multiple approaches before implementing",
+                "Optimize for both time and space complexity",
+                "Test thoroughly with various input sizes"
             ]
 
-        solution_index = min((level - 1) // 2, 4)
-        return solutions[solution_index]
+    def _generate_function_signature(self, language: str, chapter: str, level: int) -> str:
+        """Generate appropriate function signature"""
+        if language == "python":
+            if level <= 3:
+                return "def solution(data):"
+            elif level <= 6:
+                return "def process_data(data, parameters=None):"
+            else:
+                return "def advanced_solution(data, constraints):"
+        elif language == "java":
+            if level <= 3:
+                return "public static Object solution(Object data) {"
+            elif level <= 6:
+                return "public static Object processData(Object data, Object parameters) {"
+            else:
+                return "public static Object advancedSolution(Object data, Object constraints) {"
+        else:
+            if level <= 3:
+                return "function solution(data) {"
+            elif level <= 6:
+                return "function processData(data, parameters) {"
+            else:
+                return "function advancedSolution(data, constraints) {"
 
-    def _get_realistic_complexity(self, level: int, complexity_type: str) -> str:
-        """Get realistic complexity based on level"""
-        if level <= 2:
-            return "O(1)" if complexity_type == "time" else "O(1)"
-        elif level <= 4:
+    def _generate_test_cases(self, level: int) -> List[Dict]:
+        """Generate test cases"""
+        test_cases = []
+        for i in range(3):
+            test_cases.append({
+                "input": f"test_input_{level}_{i + 1}",
+                "expected_output": f"expected_output_{level}_{i + 1}"
+            })
+        return test_cases
+
+    def _generate_solution(self, language: str, chapter: str, level: int) -> str:
+        """Generate solution code"""
+        if language == "python":
+            if level <= 3:
+                return f"# Level {level} solution for {chapter}\ndef solution(data):\n    # Basic implementation\n    return data"
+            elif level <= 6:
+                return f"# Level {level} solution for {chapter}\ndef solution(data):\n    # Process the data\n    result = []\n    for item in data:\n        if item:  # Some condition\n            result.append(item)\n    return result"
+            else:
+                return f"# Level {level} solution for {chapter}\ndef solution(data):\n    # Advanced implementation\n    if not data:\n        return []\n    \n    # Complex processing\n    from collections import defaultdict\n    freq = defaultdict(int)\n    for item in data:\n        freq[item] += 1\n    \n    return [item for item in data if freq[item] > 1]"
+        else:
+            return f"// Level {level} solution for {chapter}\n// Implementation would vary by language"
+
+    def _generate_complexity(self, level: int, complexity_type: str) -> str:
+        """Generate complexity analysis"""
+        if level <= 3:
             return "O(n)" if complexity_type == "time" else "O(1)"
         elif level <= 6:
             return "O(n log n)" if complexity_type == "time" else "O(n)"
-        elif level <= 8:
-            return "O(n^2)" if complexity_type == "time" else "O(n)"
         else:
-            return "O(n^2) or better" if complexity_type == "time" else "O(n)"
+            return "O(n^2)" if complexity_type == "time" else "O(n)"
 
     def analyze_user_code(self, user_code: str, question_data: Dict, language: str) -> Dict[str, Any]:
-        """Analyze user's code - simplified for now"""
+        """Analyze user's code"""
         return {
-            "correctness_score": 75,
-            "is_correct": True,
-            "feedback": "Code analysis would be performed here with OpenAI integration. Currently using simulated analysis.",
-            "strengths": ["Good code structure", "Proper function definition", "Logical approach"],
-            "improvements": ["Add more comments", "Handle edge cases", "Consider optimization"],
-            "efficiency_analysis": "Time complexity appears optimal for this level",
+            "correctness_score": random.randint(60, 95),
+            "is_correct": random.choice([True, False]),
+            "feedback": "This is a simulated analysis. With OpenAI integration, you would get detailed feedback on your code implementation, logic, and efficiency.",
+            "strengths": ["Good code structure", "Clear variable names", "Proper function organization"],
+            "improvements": ["Add more comments", "Handle edge cases", "Consider optimization opportunities"],
+            "efficiency_analysis": f"Time complexity appears to be {question_data.get('time_complexity', 'O(n)')}, which is appropriate for this level.",
             "bugs": [],
-            "passed_test_cases": 3,
+            "passed_test_cases": random.randint(1, 3),
             "total_test_cases": 3,
-            "hints": ["Consider edge cases", "Test with different inputs", "Review time complexity"],
+            "hints": ["Review the problem requirements", "Test with different inputs", "Consider time complexity"],
             "analyzed_at": time.time()
         }
 
 
-# Rest of the code remains the same...
 class ChapterManager:
     def __init__(self):
         self.chapters = [
@@ -573,14 +726,21 @@ class ContentCache:
         self.cache[key] = value
         return True
 
+    def get_concept(self, chapter_id: int, language: str):
+        concept_key = f"concept_{chapter_id}_{language}"
+        return self.get(concept_key)
+
+    def set_concept(self, chapter_id: int, language: str, concept: Dict):
+        concept_key = f"concept_{chapter_id}_{language}"
+        return self.set(concept_key, concept)
+
     def get_question(self, chapter_id: int, language: str, level: int):
-        chapter_key = f"chapter_{chapter_id}_{language}"
-        chapter_data = self.get(chapter_key)
-        if chapter_data and 'questions' in chapter_data:
-            for question in chapter_data['questions']:
-                if question.get('level') == level:
-                    return question
-        return None
+        question_key = f"question_{chapter_id}_{language}_{level}"
+        return self.get(question_key)
+
+    def set_question(self, chapter_id: int, language: str, level: int, question: Dict):
+        question_key = f"question_{chapter_id}_{language}_{level}"
+        return self.set(question_key, question)
 
     def get_solution(self, chapter_id: int, language: str, level: int):
         question = self.get_question(chapter_id, language, level)
@@ -593,7 +753,6 @@ chapter_manager = ChapterManager()
 cache = ContentCache()
 
 
-# Routes (same as before)
 @app.route('/api/health', methods=['GET'])
 def health_check():
     return jsonify({
@@ -621,46 +780,35 @@ def get_chapters():
     })
 
 
-@app.route('/api/chapters/<int:chapter_id>/content', methods=['GET'])
-def get_chapter_content(chapter_id):
+@app.route('/api/chapters/<int:chapter_id>/concept', methods=['GET'])
+def get_concept(chapter_id):
     language = request.args.get('language', 'python')
-    force_refresh = request.args.get('refresh', 'false').lower() == 'true'
 
-    chapter = chapter_manager.get_chapter(chapter_id)
-    if not chapter:
-        return jsonify({'error': 'Chapter not found'}), 404
+    # Try to get from cache first
+    concept = cache.get_concept(chapter_id, language)
 
-    cache_key = f"chapter_{chapter_id}_{language}"
+    if not concept:
+        chapter = chapter_manager.get_chapter(chapter_id)
+        if not chapter:
+            return jsonify({'error': 'Chapter not found'}), 404
 
-    if not force_refresh:
-        cached_content = cache.get(cache_key)
-        if cached_content:
-            return jsonify({
-                'chapter': chapter,
-                'content': cached_content,
-                'cached': True
-            })
+        print(f"🚀 Generating concept content for {chapter['name']} in {language}...")
 
-    print(f"🚀 Generating content for {chapter['name']} in {language}...")
-    try:
-        chapter_content = openai_service.generate_comprehensive_chapter_content(
+        # Generate concept content
+        concept = openai_service.generate_concept_content(
             chapter["name"],
             chapter["topics"],
             language
         )
 
-        cache.set(cache_key, chapter_content)
+        # Cache the concept
+        cache.set_concept(chapter_id, language, concept)
 
-        return jsonify({
-            'chapter': chapter,
-            'content': chapter_content,
-            'cached': False,
-            'generated_at': chapter_content.get('generated_at'),
-            'fallback': chapter_content.get('fallback', False)
-        })
-    except Exception as e:
-        print(f"Error generating chapter content: {e}")
-        return jsonify({'error': 'Failed to generate chapter content'}), 500
+    return jsonify({
+        'concept': concept,
+        'language': language,
+        'chapter_id': chapter_id
+    })
 
 
 @app.route('/api/chapters/<int:chapter_id>/questions/<int:level>', methods=['GET'])
@@ -670,6 +818,7 @@ def get_question(chapter_id, level):
     if level < 1 or level > 10:
         return jsonify({'error': 'Level must be between 1 and 10'}), 400
 
+    # Try to get from cache first
     question = cache.get_question(chapter_id, language, level)
 
     if not question:
@@ -677,27 +826,18 @@ def get_question(chapter_id, level):
         if not chapter:
             return jsonify({'error': 'Chapter not found'}), 404
 
-        cache_key = f"chapter_{chapter_id}_{language}"
-        chapter_content = cache.get(cache_key)
+        print(f"🚀 Generating question for {chapter['name']} - Level {level} in {language}...")
 
-        if not chapter_content:
-            try:
-                chapter_content = openai_service.generate_comprehensive_chapter_content(
-                    chapter["name"],
-                    chapter["topics"],
-                    language
-                )
-                cache.set(cache_key, chapter_content)
-            except Exception as e:
-                return jsonify({'error': 'Failed to generate questions'}), 500
+        # Generate single question
+        question = openai_service.generate_single_question(
+            chapter["name"],
+            chapter["topics"],
+            language,
+            level
+        )
 
-        for q in chapter_content.get('questions', []):
-            if q.get('level') == level:
-                question = q
-                break
-
-    if not question:
-        return jsonify({'error': 'Question not found'}), 404
+        # Cache the question
+        cache.set_question(chapter_id, language, level, question)
 
     return jsonify({
         'question': question,
@@ -751,50 +891,75 @@ def validate_code(chapter_id):
 
 @app.route('/api/preload', methods=['POST'])
 def preload_content():
-    """Preload content for all chapters and languages"""
+    """Preload concepts and questions"""
     data = request.get_json() or {}
     languages = data.get('languages', Config.SUPPORTED_LANGUAGES)
+    levels = data.get('levels', list(range(1, 11)))
 
     results = []
 
     for language in languages:
         for chapter in chapter_manager.get_all_chapters():
-            cache_key = f"chapter_{chapter['id']}_{language}"
-            if not cache.get(cache_key):
-                print(f"🚀 Preloading {chapter['name']} in {language}...")
+            # Preload concept
+            concept_key = f"concept_{chapter['id']}_{language}"
+            if not cache.get(concept_key):
+                print(f"🚀 Preloading concept for {chapter['name']} in {language}...")
                 try:
-                    content = openai_service.generate_comprehensive_chapter_content(
+                    concept = openai_service.generate_concept_content(
                         chapter["name"],
                         chapter["topics"],
                         language
                     )
-                    cache.set(cache_key, content)
+                    cache.set_concept(chapter['id'], language, concept)
                     results.append({
+                        'type': 'concept',
                         'chapter': chapter['name'],
                         'language': language,
-                        'questions_loaded': len(content.get('questions', [])),
-                        'status': 'loaded',
-                        'fallback': content.get('fallback', False)
+                        'status': 'loaded'
                     })
                 except Exception as e:
                     results.append({
+                        'type': 'concept',
                         'chapter': chapter['name'],
                         'language': language,
                         'status': 'error',
                         'error': str(e)
                     })
-            else:
-                cached_content = cache.get(cache_key)
-                results.append({
-                    'chapter': chapter['name'],
-                    'language': language,
-                    'questions_loaded': len(cached_content.get('questions', [])),
-                    'status': 'cached',
-                    'fallback': cached_content.get('fallback', False)
-                })
+
+            # Preload questions
+            for level in levels:
+                question_key = f"question_{chapter['id']}_{language}_{level}"
+                if not cache.get(question_key):
+                    print(f"🚀 Preloading {chapter['name']} - Level {level} in {language}...")
+                    try:
+                        question = openai_service.generate_single_question(
+                            chapter["name"],
+                            chapter["topics"],
+                            language,
+                            level
+                        )
+                        cache.set_question(chapter['id'], language, level, question)
+                        results.append({
+                            'type': 'question',
+                            'chapter': chapter['name'],
+                            'language': language,
+                            'level': level,
+                            'status': 'loaded'
+                        })
+                        # Small delay to avoid rate limiting
+                        time.sleep(1)
+                    except Exception as e:
+                        results.append({
+                            'type': 'question',
+                            'chapter': chapter['name'],
+                            'language': language,
+                            'level': level,
+                            'status': 'error',
+                            'error': str(e)
+                        })
 
     return jsonify({
-        'message': f'Preloaded content for {len(results)} combinations',
+        'message': f'Preloaded {len(results)} items',
         'results': results
     })
 
@@ -803,23 +968,16 @@ def preload_content():
 def debug_cache():
     """Debug endpoint to check cache status"""
     cache_keys = list(cache.cache.keys())
-    status = {}
+    concept_keys = [k for k in cache_keys if k.startswith('concept_')]
+    question_keys = [k for k in cache_keys if k.startswith('question_')]
 
-    for key in cache_keys:
-        content = cache.get(key)
-        if content and 'questions' in content:
-            questions = content.get('questions', [])
-            levels = [q.get('level') for q in questions]
-            status[key] = {
-                'questions_count': len(questions),
-                'levels_available': sorted(levels),
-                'generated_at': content.get('generated_at'),
-                'language': content.get('language'),
-                'fallback': content.get('fallback', False)
-            }
+    status = {
+        'concepts': len(concept_keys),
+        'questions': len(question_keys),
+        'total': len(cache_keys)
+    }
 
     return jsonify({
-        'total_cached_chapters': len(status),
         'cache_status': status,
         'openai_connected': openai_service.check_connection()
     })
@@ -830,16 +988,16 @@ if __name__ == '__main__':
     print(f"📚 Chapters: {len(chapter_manager.get_all_chapters())}")
     print(f"🌐 Languages: {Config.SUPPORTED_LANGUAGES}")
     print(f"🔌 OpenAI: {'Connected' if openai_service.check_connection() else 'Disconnected'}")
-    print(f"🎯 Questions: 10 distinct levels per chapter (1=easiest, 10=hardest)")
+    print(f"🎯 Questions: Generated individually per level (1=easiest, 10=hardest)")
     print("\n📋 API Endpoints:")
     print("   GET  /api/health")
     print("   GET  /api/chapters?language=python")
-    print("   GET  /api/chapters/1/content?language=python")
-    print("   GET  /api/chapters/1/questions/5?language=python (level 5)")
+    print("   GET  /api/chapters/1/concept?language=python (get concept content)")
+    print("   GET  /api/chapters/1/questions/5?language=python (get level 5 question)")
     print("   GET  /api/chapters/1/questions/5/solution")
     print("   POST /api/chapters/1/validate")
-    print("   POST /api/preload (preload all content)")
+    print("   POST /api/preload (preload content)")
     print("   GET  /api/debug/cache (check cache status)")
-    print("\n⚡ Use POST /api/preload to generate all content!")
+    print("\n⚡ Both concepts and questions are now available!")
 
     app.run(debug=True, host='0.0.0.0', port=5000)
