@@ -9,4 +9,4 @@ def install_requirements():
 if __name__ == '__main__':
     install_requirements()
     print("Backend dependencies installed successfully!")
-    print("Run: python app.py")
+    print("Run: python main.py")
